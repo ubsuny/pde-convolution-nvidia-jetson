@@ -1,10 +1,13 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaarithm.hpp>
+#include <opencv2/cudafilters.hpp>
 #include <string>
 #include <cstdlib>
 #include <iostream>
-#define M_PI           3.14159265358979323846
+#include <cstdio>
+#include <ctime>
 
 int main(int argc, char** argv){
 
@@ -15,16 +18,44 @@ int main(int argc, char** argv){
 	cv::Mat Ut = cv::Mat::zeros(N, N, CV_32F);
 	cv::Mat lU = cv::Mat::zeros(N, N, CV_32F);
 
-	/*for (int i = 0; i < N; ++i){
-		for (int j = 0; j < N; ++j){
-			std::cout <<  U[]
-		}
-	}*/
 	
+	U.at<float>(N/2,N/2) = 10;	
 	std::cout << U << std::endl;	
 
+	//double lap_vals[3][3] = {{0, 1, 0},{1, -4, 1},{0, 1, 0}};
+	cv::Mat LaPlace = cv::Mat::zeros(3, 3, CV_32F);
+	LaPlace.at<float>(0,1) = 1;
+	LaPlace.at<float>(1,0) = 1;
+	LaPlace.at<float>(1,1) = -4;
+	LaPlace.at<float>(1,2) = 1;
+	LaPlace.at<float>(2,1) = 1;
 
-    //load the image
+	std::cout << LaPlace <<std::endl;
+
+
+
+	std::clock_t start;
+	double duration;
+	start = std::clock();
+
+
+	/*Algorithm*/
+	cv::Mat U_out;
+	cv::Ptr<cv::cuda::Filter> filter2D;
+	filter2D = cv::cuda::createLinearFilter(U.type(), -1, LaPlace);
+	for (int k = 0; k < 50; ++k){
+		//lU = cv::cuda::Convolution::convolve(U, LaPlace, U_out, bool ccorr = false, Stream& stream = Stream::Null());
+		filter2D->apply(U, Ut);
+		U = U + Ut;
+		Ut = Ut + (1/4)*lU;
+	
+	} 
+
+	duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+	std::cout<<"printf: "<< duration <<'\n';
+    
+	
+	//load the image
     /*
     image = cv::imread(filename.c_str(), CV_LOAD_IMAGE_COLOR);
     cv::cvtColor(image, image_gray, CV_BGR2GRAY);
